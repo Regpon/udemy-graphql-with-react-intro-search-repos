@@ -9,7 +9,7 @@ const DEFAULT_VARIABLES = {
   "before": null,
   "first": 5,
   "last": null,
-  "query": "React"
+  "query": "フロントエンドエンジニア"
 };
 
 class App extends Component {
@@ -59,7 +59,24 @@ class App extends Component {
 
               const title = `GitHub Repositories Serch Results - ${repositoryCount} ${repositoryUnit}`
 
-              return <h2>{title}</h2>;
+              return (
+                <>
+                  <h2>{title}</h2>
+                  <ul>
+                    {
+                      search.edges.map(edge => {
+                        const node = edge.node;
+
+                        return (
+                          <li key={node.id}>
+                            <a href={node.url}>{node.name}</a>
+                          </li>
+                        )
+                      })
+                    }
+                  </ul>
+                </>
+              );
             }
           }
         </Query>
