@@ -1,13 +1,55 @@
 import React, { Component } from 'react';
-import { ApolloProvider } from 'react-apollo';
-import { Query } from 'react-apollo';
+import { ApolloProvider, Mutation, Query } from 'react-apollo';
 import client from './client';
-import { SEARCH_REPOSITORIES ,ME } from './graphql'
+import { ADD_STAR, REMOVE_STAR, SEARCH_REPOSITORIES } from './graphql'
+
+const StarButton = props => {
+  const { node, query, first, last, before, after } = props;
+
+  const starCount = node.stargazers.totalCount;
+  const starUnit = node.viewerHasStarred ? 'starred' : '-';
+  const starCountStr = starCount === 1 ? '1 star' : `${starCount} stars`;
+
+  const StarStatus = ({changeStarMutaion}) => {
+    return (
+      <button
+        onClick={
+          () => changeStarMutaion({
+            variables: { input: {starrableId: node.id } }
+          })
+        }
+      >
+        {starCountStr} | {starUnit}
+      </button>
+    );
+  }
+
+  return (
+    <Mutation 
+      mutation={node.viewerHasStarred ? REMOVE_STAR : ADD_STAR}
+      refetchQueries={mutaionResult => {
+        console.log(mutaionResult)
+        return [
+          {
+            query: SEARCH_REPOSITORIES,
+            variables: { query, first, last, before, after }
+          }
+        ]
+      } }
+    >
+      {
+        changeStar => <StarStatus changeStarMutaion={changeStar}/>
+      }
+    </Mutation>
+  );
+}
+
+const PER_PAGE = 5;
 
 const DEFAULT_VARIABLES = {
   "after": null,
   "before": null,
-  "first": 5,
+  "first": PER_PAGE,
   "last": null,
   "query": "フロントエンドエンジニア"
 };
@@ -36,9 +78,26 @@ class App extends Component {
     event.preventDefault();
   }
 
+  goNext(search) {
+    this.setState({
+      first: PER_PAGE,
+      after: search.pageInfo.endCursor,
+      last: null,
+      before: null
+    });
+  }
+
+  goPrevious(search) {
+    this.setState({
+      first: null,
+      after: null,
+      last: PER_PAGE,
+      before: search.pageInfo.startCursor
+    });
+  }
+
   render() {
     const  { query, first, last, before, after } = this.state;
-    console.log({query});
     return (
       <ApolloProvider client={client}>
         <form onSubmit={this.handleSubmit} >
@@ -69,12 +128,35 @@ class App extends Component {
 
                         return (
                           <li key={node.id}>
-                            <a href={node.url}>{node.name}</a>
+                            <a href={node.url} target="_blank" rel="noopener noreferrer">{node.name}</a>
+                            &nbsp;
+                            <StarButton node={node} {...{ query, first, last, before, after }} />
                           </li>
                         )
                       })
                     }
                   </ul>
+                  {
+                    search.pageInfo.hasPreviousPage === true ?
+                    <button 
+                      onClick={this.goPrevious.bind(this, search)}
+                    >
+                      Previous
+                    </button>
+                    :
+                    null
+                  }
+
+                  {
+                    search.pageInfo.hasNextPage === true ?
+                    <button 
+                      onClick={this.goNext.bind(this, search)}
+                    >
+                      Next
+                    </button>
+                    :
+                    null
+                  }
                 </>
               );
             }
